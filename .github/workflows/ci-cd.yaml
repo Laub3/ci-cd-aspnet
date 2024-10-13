@@ -1,0 +1,73 @@
+name: CI/CD para Azure Web App com Docker
+
+on:
+  push:
+    branches:
+      - main
+      - qa
+  pull_request:
+    branches:
+      - qa
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build the project
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test the project
+        run: dotnet test --no-build --verbosity normal
+
+      - name: Build Docker image
+        run: docker build . -t ${{ github.repository }}:${{ github.sha }}
+
+  deploy-qa:
+    if: github.ref == 'refs/heads/qa'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Azure Container Registry (QA)
+        run: echo ${{ secrets.AZURE_ACR_PASSWORD }} | docker login ${{ secrets.AZURE_ACR_SERVER }} -u ${{ secrets.AZURE_ACR_USERNAME }} --password-stdin
+
+      - name: Tag Docker image for QA
+        run: docker tag ${{ github.repository }}:${{ github.sha }} ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-qa:${{ github.sha }}
+
+      - name: Push Docker image to ACR (QA)
+        run: docker push ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-qa:${{ github.sha }}
+
+      - name: Deploy to Azure Web App for Containers (QA)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME_QA }}
+          images: ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-qa:${{ github.sha }}
+
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Azure Container Registry (Production)
+        run: echo ${{ secrets.AZURE_ACR_PASSWORD }} | docker login ${{ secrets.AZURE_ACR_SERVER }} -u ${{ secrets.AZURE_ACR_USERNAME }} --password-stdin
+
+      - name: Tag Docker image for Production
+        run: docker tag ${{ github.repository }}:${{ github.sha }} ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-prod:${{ github.sha }}
+
+      - name: Push Docker image to ACR (Production)
+        run: docker push ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-prod:${{ github.sha }}
+
+      - name: Deploy to Azure Web App for Containers (Production)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME_PROD }}
+          images: ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-prod:${{ github.sha }}
