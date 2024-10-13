@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Fiap.web.apidotnet")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d9f5f0a27c9933c0fe541f1f12ca119005ad87f6")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+306e67fb80a6fdf15209debec9d8c80fb57350e6")]
 [assembly: System.Reflection.AssemblyProductAttribute("Fiap.web.apidotnet")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Fiap.web.apidotnet")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
