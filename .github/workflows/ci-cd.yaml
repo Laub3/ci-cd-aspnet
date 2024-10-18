@@ -1,12 +1,9 @@
-name: CI/CD para Azure Web App com Docker
+name: CI/CD Pipeline to Docker Hub
 
 on:
   push:
     branches:
       - main
-      - qa
-  pull_request:
-    branches:
       - qa
 
 jobs:
@@ -14,60 +11,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v3
+      # Checkout do código
+      - name: Check out the code
+        uses: actions/checkout@v2
 
-      - name: Setup .NET Core
-        uses: actions/setup-dotnet@v3
+      # Login no Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
-          dotnet-version: '8.x'
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build the project
-        run: dotnet build --configuration Release --no-restore
-
-      - name: Test the project
-        run: dotnet test --no-build --verbosity normal
-
+      # Construir a imagem Docker
       - name: Build Docker image
-        run: docker build . -t ${{ github.repository }}:${{ github.sha }}
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/aspnet-app:${{ github.sha }} .
 
-  deploy-qa:
-    if: github.ref == 'refs/heads/qa'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Login to Azure Container Registry (QA)
-        run: echo ${{ secrets.AZURE_ACR_PASSWORD }} | docker login ${{ secrets.AZURE_ACR_SERVER }} -u ${{ secrets.AZURE_ACR_USERNAME }} --password-stdin
-
-      - name: Tag Docker image for QA
-        run: docker tag ${{ github.repository }}:${{ github.sha }} ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-qa:${{ github.sha }}
-
-      - name: Push Docker image to ACR (QA)
-        run: docker push ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-qa:${{ github.sha }}
-
-      - name: Deploy to Azure Web App for Containers (QA)
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME_QA }}
-          images: ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-qa:${{ github.sha }}
-
-  deploy-prod:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Login to Azure Container Registry (Production)
-        run: echo ${{ secrets.AZURE_ACR_PASSWORD }} | docker login ${{ secrets.AZURE_ACR_SERVER }} -u ${{ secrets.AZURE_ACR_USERNAME }} --password-stdin
-
-      - name: Tag Docker image for Production
-        run: docker tag ${{ github.repository }}:${{ github.sha }} ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-prod:${{ github.sha }}
-
-      - name: Push Docker image to ACR (Production)
-        run: docker push ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-prod:${{ github.sha }}
-
-      - name: Deploy to Azure Web App for Containers (Production)
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME_PROD }}
-          images: ${{ secrets.AZURE_ACR_SERVER }}/fiap-web-prod:${{ github.sha }}
+      # Publicar a imagem Docker no Docker Hub
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/aspnet-app:${{ github.sha }}
